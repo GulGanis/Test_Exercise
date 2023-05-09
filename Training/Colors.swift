@@ -14,4 +14,6 @@ struct Colors {
     let orange = Color("orange")
     let beige = Color("beige")
     let darkest = Color("darkest")
+    let pink = Color("pink")
+    let darkPink = Color("darkPink")
 }

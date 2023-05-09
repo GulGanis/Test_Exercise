@@ -8,19 +8,51 @@
 import SwiftUI
 
 struct ContentView: View {
+    
+    enum screenConditions : String {
+        case today
+        case doctor
+        case media
+    }
+    
+    @State var screen : String = screenConditions.today.rawValue // Screen switcher
+    
     let palette = Colors()
     var body: some View {
         ZStack {
             Color.black
                 .ignoresSafeArea()
             VStack {
-                TopSide()
-                Title()
-                SliderBar()
-                EmojiBarsBuilder()
-                SliderBar()
+                    switch screen {
+                    case screenConditions.today.rawValue:
+                        TopSide()
+                        ScrollView(.vertical, showsIndicators: false) {
+                            SliderBar()
+                            EmojiBarsBuilder()
+                                .padding()
+                            SliderBar()
+                                .opacity(0.45)
+                        }
+                    case screenConditions.doctor.rawValue:
+                        ProgressScreen()
+                    default:
+                        ProgressScreen()
+                    }
                 HStack {
-                    BottomCollected()
+                    BottomSide(opacity: screen == screenConditions.doctor.rawValue ? 1 : 0.5,
+                               image: "stetho",
+                               text: "At the doctor",
+                               navigate: screenConditions.doctor.rawValue,
+                               screen: $screen)
+                    BottomSide(opacity: screen == screenConditions.today.rawValue ? 1 : 0.5,
+                               image: "calendar",
+                               text: "Today",
+                               navigate: screenConditions.today.rawValue,
+                               screen: $screen)
+                    BottomSide(opacity: screen == screenConditions.media.rawValue ? 1 : 0.5,
+                               image: "tv",
+                               text: "Media",
+                               navigate: screenConditions.media.rawValue, screen: $screen)
                 }
             }
         }
@@ -29,65 +61,104 @@ struct ContentView: View {
 
 // MARK: Builded up parts
 
-struct BottomCollected : View {
+struct ProgressScreen : View {
     var body: some View {
-        BottomSide(opacity: 0.5, image: "stethoscope", text: "At the doctor")
-        BottomSide(opacity: 1, image: "calendar", text: "Today")
-        BottomSide(opacity: 0.5, image: "tv", text: "Media")
+        ZStack {
+            Rectangle()
+            ProgressView()
+                .tint(Color.red)
+                .scaleEffect(8)
+        }
     }
 }
+
 
 struct BottomSide : View {
     let opacity : Double
     let image : String
     let text : String
+    let navigate : String
+    @Binding var screen : String
     var body: some View {
         VStack {
             RoundedRectangle(cornerRadius: 50)
                 .frame(width: 110, height: 5)
                 .foregroundColor(.white)
                 .opacity(opacity)
-            HStack {
-                Image(systemName: image)
-                    .foregroundColor(.white)
-                    .font(.system(size: 20))
-                Text(text)
-                    .foregroundColor(.white)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.5)
-            }.frame(width: 110, height: 20)
+            Button {
+                withAnimation(.easeInOut) {
+                    screen = navigate
+                }
+            } label: {
+                HStack {
+                    Image(image)
+                        .foregroundColor(.white)
+                        .font(.system(size: 20))
+                        .opacity(opacity)
+                    Text(text)
+                        .foregroundColor(.white)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.5)
+                        .opacity(opacity)
+                }.frame(width: 110, height: 20)
+            }.buttonStyle(.borderless)
         }
     }
 }
 
 struct SliderBar : View {
+    @State var position : Int = 0
     let titleArray : [String] = ["Fingers", "Nothing", "Nothing", "Nothing", "Nothing"]
     let infoArray : [String] = ["The fingers and toes are becoming properly separated losing ny webbing.\nThe fingers and toes are becoming properly separated, losing any webbing.", "Nothing", "Nothing", "Nothing", "Nothing"]
     let palette = Colors()
     var body: some View {
-        TabView {
-            ForEach(titleArray.indices, id: \.self) { indexRow in
-                ZStack {
-                    RoundedRectangle(cornerRadius: 20)
-                        .foregroundColor(palette.beige)
-                        .frame(width: 350, height: 200)
-                        .padding()
-                    VStack(spacing: 0) {
-                        Text(titleArray[indexRow])
-                            .bold()
-                            .foregroundColor(.white)
-                            .font(.system(size: 30))
-                        Text(infoArray[indexRow])
-                            .frame(width: 300, height: 100)
-                            .font(.system(size: 15))
-                            .multilineTextAlignment(.center)
-                            .foregroundColor(.white)
-                        
+        VStack {
+            Title()
+            TabView(selection: $position) {
+                ForEach(titleArray.indices, id: \.self) { indexRow in
+                    ZStack {
+                        RoundedRectangle(cornerRadius: 30)
+                            .foregroundColor(palette.beige)
+                            .frame(width: 341, height: 216) // Frame of inner rectangle
+                            .padding()
+                        VStack(spacing: 0) {
+                            Text(titleArray[indexRow])
+                                .bold()
+                                .foregroundColor(.white)
+                                .font(.system(size: 32))
+                            Text(infoArray[indexRow])
+                                .frame(width: 300, height: 100)
+                                .font(.system(size: 16))
+                                .multilineTextAlignment(.center)
+                                .foregroundColor(.white)
+                            
+                        }
                     }
+                    .tag(indexRow)
                 }
             }
+            .frame(width: 350, height: 216) // Frame of tabView
+            .onChange(of: position, perform: { newValue in
+                print(newValue)
+            })
+            .tabViewStyle(.page(indexDisplayMode: .never))
+            HStack {
+                ForEach(0...4, id: \.self) { indexCircle in
+                    Circles(opacity: position == indexCircle ? 1 : 0.3)
+                }
+            }
+            .padding(.top, 20)
         }
-        .tabViewStyle(.page)
+    }
+}
+
+struct Circles : View {
+    let opacity : Double
+    var body: some View {
+        Circle()
+            .foregroundColor(.white)
+            .frame(width: 10)
+            .opacity(opacity)
     }
 }
 
@@ -105,10 +176,10 @@ struct Title : View {
                 ZStack {
                     Circle()
                         .foregroundColor(palette.grey)
-                        .frame(width: 35)
+                        .frame(width: 30)
                     Image(systemName: "xmark")
                         .foregroundColor(.white)
-                        .font(.system(size: 23))
+                        .font(.system(size: 18))
                 }
             }.buttonStyle(.borderless)
         }
@@ -118,7 +189,7 @@ struct Title : View {
 struct EmojiBarsBuilder : View {
     let palette = Colors()
     let emojiArray : [String] = ["😩", "😭", "😟", "😣", "😃", "😄"]
-    let heightArray : [CGFloat] = [20, 50, 70, 20, 80, 90]
+    let heightArray : [CGFloat] = [20, 50, 70, 20, 80, 95]
     var body: some View {
         ZStack {
             RoundedRectangle(cornerRadius: 30)
@@ -128,7 +199,7 @@ struct EmojiBarsBuilder : View {
                 Text("Mood breakdown")
                     .foregroundColor(.white)
                     .bold()
-                    .font(.system(size: 25))
+                    .font(.system(size: 24))
                     .frame(width: 330, alignment: .leading)
                     .padding(.leading, 40)
                 HStack(spacing: 30) {
@@ -150,7 +221,7 @@ struct barLine : View {
             ZStack(alignment: .bottom) {
                 RoundedRectangle(cornerRadius: 50)
                     .foregroundColor(palette.grey)
-                    .frame(width: 8, height: 90)
+                    .frame(width: 8, height: 95)
                 RoundedRectangle(cornerRadius: 50)
                     .foregroundColor(palette.orange)
                     .frame(width: 8, height: height)
@@ -168,27 +239,29 @@ struct TopSide : View {
             VStack(alignment: .leading) {
                 Text("Today,")
                     .foregroundColor(.white)
+                    .font(.system(size: 16))
                 Text(getDateFormatted()) // func for time.
                     .foregroundColor(.white)
+                    .font(.system(size: 16))
             }
             ZStack {
                 Circle()
                     .frame(width: 50)
                     .foregroundColor(palette.raspberry)
-                Image("Image")
+                Image("raspberry")
                     .resizable()
                     .aspectRatio(contentMode: .fit)
-                    .frame(width: 40, height: 40)
+                    .frame(width: 33, height: 34)
                     .padding(.trailing, 3)
             }.padding(.trailing, 30)
             Button {
                 // Here goes the action
             } label: {
-                Image("Settings")
+                Image("settingsCircle")
                     .renderingMode(.template)
                     .resizable()
                     .aspectRatio(contentMode: .fit)
-                    .frame(width: 30)
+                    .frame(width: 25)
                     .foregroundColor(.white)
             }.buttonStyle(.borderless)
             
